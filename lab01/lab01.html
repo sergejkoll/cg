@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>Лабораторная работа №1</title>
+</head>
+
+<body>
+	<canvas id="canvas" width="600" height="600" style = "border:1px solid black"></canvas>
+
+	<script>
+		var sun = new Image();
+		var moon = new Image();
+		var earth = new Image();
+		function init() {
+			sun.src = 'https://mdn.mozillademos.org/files/1456/Canvas_sun.png';
+			moon.src = 'https://mdn.mozillademos.org/files/1443/Canvas_moon.png';
+			earth.src = 'https://mdn.mozillademos.org/files/1429/Canvas_earth.png';
+			window.requestAnimationFrame(draw);
+		}
+
+		function draw() {
+			var ctx = document.getElementById('canvas').getContext('2d');
+
+			ctx.globalCompositeOperation = 'destination-over'; // Необходимо для того чтобы фигуры строились за содержимым холста 
+			ctx.clearRect(0, 0, 600, 600); // очищаем холст
+
+			ctx.fillStyle = 'rgba(0, 0, 0, 0.4)'; // задаем цвет заливки (серый для тени)
+			ctx.strokeStyle = 'rgba(0, 153, 255, 0.4)'; // задаем цвет для обводки фигур (светло-голубой для орбиты)
+			ctx.save(); // сохраняем и добавляем в стек текущее состояние
+			ctx.translate(300, 300); // перемещаем центр координат
+
+			// Земля
+			var time = new Date();
+			ctx.rotate(((2 * Math.PI) / 60) * time.getSeconds() + ((2 * Math.PI) / 60000) * time.getMilliseconds()); // добавление вращения
+			ctx.translate(200, 0);
+			ctx.fillRect(8, -10, 80, 40); // добавление тени
+			ctx.drawImage(earth, -10, -10, 40, 40); // рисуем изображение земли
+
+			// Moon
+			ctx.save();
+			ctx.rotate(((2 * Math.PI) / 6) * time.getSeconds() + ((2 * Math.PI) / 6000) * time.getMilliseconds());
+			ctx.translate(0, 40);
+			ctx.drawImage(moon, 12, 12);
+			ctx.restore(); // восстанавливаем предварительно сохраненное состояние канваса из стека
+
+			ctx.restore();
+
+			ctx.beginPath();
+			ctx.arc(300, 300, 210, 0, Math.PI * 2, false); // орбита земли
+			ctx.stroke();
+
+			ctx.drawImage(sun, 0, 0, 600, 600);
+
+			window.requestAnimationFrame(draw); // указывает браузеру на то, что вы хотите произвести анимацию, и просит его запланировать перерисовку на следующем кадре анимации.
+		}
+
+		init();
+	</script>
+</body>
+</html>
