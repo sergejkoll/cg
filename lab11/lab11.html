@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Лабораторная работа №11</title>
+</head>
+<body>
+
+<canvas width="500" height="500"></canvas><br>
+Вращение вокруг оси X: <label for="rotateX"></label><input id="rotateX" type="range" min="-3.1415" max="3.1415" value="0" step = "0.0001" oninput="update()"><b id="infoRotateX"></b><br>
+Вращение вокруг оси Y: <label for="rotateY"></label><input id="rotateY" type="range" min="-3.1415" max="3.1415" value="0" step = "0.0001" oninput="update()"><b id="infoRotateY"></b><br>
+Вращение вокруг оси Z: <label for="rotateZ"></label><input id="rotateZ" type="range" min="-3.1415" max="3.1415" value="0" step = "0.0001" oninput="update()"><b id="infoRotateZ"></b><br>
+
+<script>
+    var canvas = document.querySelector("canvas");
+    var ctx = canvas.getContext("2d");
+    class Vector2d{
+        constructor(x, y){
+            this.x = x;
+            this.y = y;
+        }
+        move(mx, my){
+            let x = this.x + mx;
+            let y = this.y + my;
+            return new Vector2d(x, y);
+        }
+        scale(w){
+            let x = this.x * w;
+            let y = this.y * w;
+            return new Vector2d(x, y);
+        }
+        rotate(angle){
+            let x = this.x * Math.cos(angle) - this.y * Math.sin(angle);
+            let y = this.x * Math.sin(angle) + this.y * Math.cos(angle);
+            return new Vector2d(x, y);
+        }
+    }
+    class Vector3d{
+        constructor(x, y, z){
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+        getProjection(dist){ //Получение проекции точек на плоскость
+            let x = this.x*dist/this.z;
+            let y = this.y*dist/this.z;
+            return new Vector2d(x, y);
+        }
+        move(mx, my, mz){
+            let x = this.x + mx;
+            let y = this.y + my;
+            let z = this.z + mz;
+            return new Vector3d(x, y, z);
+        }
+        scale(w){
+            let x = this.x * w;
+            let y = this.y * w;
+            let z = this.z * w;
+            return new Vector3d(x, y, z);
+        }
+        rotate(angleX, angleY, angleZ){
+            let x, y, z;
+            let temp = new Vector3d(this.x, this.y, this.z);
+            //Вращение вокруг оси 0Y
+            x = temp.x * Math.cos(angleY) + (temp.z)* Math.sin(angleY);
+            y = temp.y;
+            z = -temp.x * Math.sin(angleY) + (temp.z) * Math.cos(angleY);
+            temp.x = x; temp.y = y; temp.z = z;
+            //Вращение вокруг оси 0X
+            x = temp.x;
+            y = temp.y  * Math.cos(angleX) + temp.z * Math.sin(angleX);
+            z = -temp.y * Math.sin(angleX) + temp.z * Math.cos(angleX);
+            temp.x = x; temp.y = y; temp.z = z;
+            //Вращение вокруг оси 0Z
+            x = temp.x  * Math.cos(angleZ) + temp.y * Math.sin(angleZ);
+            y = -temp.x * Math.sin(angleZ) + temp.y * Math.cos(angleZ);
+            z = temp.z;
+            temp.x = x; temp.y = y; temp.z = z;
+            return temp;
+        }
+        static copy(vector){
+            return new Vector3d(vector.x, vector.y, vector.z);
+        }
+    }
+    class Cub{
+        constructor(w, h, l, x, y, z){
+            this.world = [ //Мировые координаты точек
+                new Vector3d(-w, -h, l),
+                new Vector3d(-w, h, l),
+                new Vector3d(w, -h, l),
+                new Vector3d(w, h, l),
+                new Vector3d(-w, -h, -l),
+                new Vector3d(-w, h, -l),
+                new Vector3d(w, -h, -l),
+                new Vector3d(w, h, -l),
+            ];
+            this.edges = [ //Связи точек для отрисовки ребер
+                [0, 1],
+                [0, 2],
+                [3, 1],
+                [3, 2],
+
+                [4, 5],
+                [4, 6],
+                [7, 5],
+                [7, 6],
+
+                [0, 4],
+                [1, 5],
+                [2, 6],
+                [3, 7],
+            ];
+            this.display = [];	//Массив для экранных координат проекций точек.
+            this.projection = []; //Массив для координат проекций точек.
+            this.scale = 1;
+            //Углы поворота куба
+            this.angleX = 0;
+            this.angleY = 0;
+            this.angleZ = 0;
+            //Координаты куба
+            this.x = x || 0;
+            this.y = y || 0;
+            this.z = z || 0;
+            this.dist = 500;
+            //Координаты проекции куба
+            this.projX = 0;
+            this.projY = 0;
+            this.update();
+        }
+        update(){ //Просчет новой проекции исходя из данных координат и углов поворота
+            for(let i in this.world){
+                this.display[i] = this.world[i];
+                this.display[i] = this.display[i].rotate(this.angleX, this.angleY, this.angleZ);
+                this.display[i] = this.display[i].scale(this.scale);
+                this.display[i] = this.display[i].move(this.x, this.y, this.z);
+                this.projection[i] = this.display[i].getProjection(this.dist); //Получаем проекцию
+                this.projection[i] = this.projection[i].move(canvas.width/2, canvas.height/2);
+            }
+
+        }
+        render(){
+            for(let i in this.edges){
+                if(this.display[this.edges[i][0]].z >= 0 && this.display[this.edges[i][1]].z >= 0){
+                    ctx.strokeStyle = "green";
+                    ctx.beginPath();
+                    ctx.moveTo(this.projection[this.edges[i][0]].x, this.projection[this.edges[i][0]].y);
+                    ctx.lineTo(this.projection[this.edges[i][1]].x, this.projection[this.edges[i][1]].y);
+                    ctx.closePath();
+                    ctx.stroke();
+                }
+            }
+        }
+    }
+    let cub = new Cub(2, 2, 2, 0, 0, 10);
+    function update(){
+        let angleX = parseFloat(document.querySelector("#rotateX").value)
+        let angleY = parseFloat(document.querySelector("#rotateY").value)
+        let angleZ = parseFloat(document.querySelector("#rotateZ").value)
+        document.querySelector("#infoRotateX").innerHTML = angleX;
+        document.querySelector("#infoRotateY").innerHTML = angleY;
+        document.querySelector("#infoRotateZ").innerHTML = angleZ;
+        cub.angleX = angleX;
+        cub.angleY = angleY;
+        cub.angleZ = angleZ;
+        cub.update() //Просчитываем и применяем новую проекцию исходя из новых координат и углов
+        ctx.fillStyle = "white";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        cub.render(); //Отрисовываем куб
+    }
+    update();
+</script>
+</body>
+</html>
